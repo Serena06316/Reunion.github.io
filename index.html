@@ -1,4 +1,4 @@
-﻿
+
 <!DOCTYPE html>
 <html lang="zh-CN" data-theme="dark">
 <head>
@@ -773,11 +773,11 @@ async function doSend(isRe){
   if(lWBc)sys+='\n\n[当前窗口世界书]\n'+lWBc;
   const anniCtx=getAnniCtx();if(anniCtx)sys+=`\n[纪念日] ${anniCtx}`;
   if(S.mem.length)sys+='\n\n[你记住的关于用户的信息，请自然运用：]\n'+S.mem.map(m=>'['+fmtDate(m.d||m.id)+'] '+m.t).join('\n');
-  if(S.notes.length){const activeNotes=S.notes.filter(n=>!n.done);if(activeNotes.length)sys+='\n\n[便签列表]\n'+activeNotes.map(n=>n.content).join('\n')}
-  if(S.letters.length)sys+='\n\n[信箱内容]\n'+S.letters.slice().reverse().map(l=>{const fromName=l.from==='assistant'?(S.cfg.aN||'助手'):(S.cfg.uN||'用户');return`[来自${fromName}，${fmtDateTime(l.ts)}]\n${l.content}`}).join('\n\n');
+  if(S.notes.length){const activeNotes=S.notes.filter(n=>!n.done);const doneNotes=S.notes.filter(n=>n.done);if(activeNotes.length)sys+='\n\n[便签列表 - 进行中]\n'+activeNotes.map(n=>'- ['+fmtDateTime(n.ts)+'] (来自'+(n.createdBy==='assistant'?(S.cfg.aN||'助手'):(S.cfg.uN||'用户'))+') '+n.content).join('\n');if(doneNotes.length)sys+='\n\n[便签列表 - 已完成]\n'+doneNotes.map(n=>'- ['+fmtDateTime(n.ts)+'] (来自'+(n.createdBy==='assistant'?(S.cfg.aN||'助手'):(S.cfg.uN||'用户'))+') '+n.content).join('\n')}
+  if(S.letters.length){sys+='\n\n[信箱 - 所有信件，按时间排列]\n'+S.letters.map(l=>'- ['+fmtDateTime(l.ts)+'] 来自'+(l.from==='assistant'?(S.cfg.aN||'助手'):(S.cfg.uN||'用户'))+'：'+l.content).join('\n')}
   sys+='\n\n[记忆工具] 当你需要记住关于用户的重要信息，或用户要求你记住时，在回复中使用 <save_memory>内容</save_memory> 。你也可以用 <edit_memory>旧内容|||新内容</edit_memory> 来修改已有记忆。不需要时不使用。';
   sys+='\n\n[便签工具] 你可以用 <add_note>内容</add_note> 来添加便签提醒。';
-  sys+='\n\n[信箱工具] 你可以用 <write_letter>内容</write_letter> 来给用户写一封信，信会保存到信箱中。适合在特殊时刻、想表达心意时使用。';
+  sys+='\n\n[信箱工具] 你可以用 <write_letter>内容</write_letter> 来给用户写一封信，信会保存到信箱中。适合在特殊时刻、想表达心意时使用。你可以看到信箱中已有的所有信件（包括用户写给你的和你写给用户的），请记住这些信的内容。';
   if(S.tOn)sys+='\n\n[思考模式] 请先用 <think>...</think> 深入思考，然后给出正式回复。';
   api.push({role:'system',content:sys});c.msgs.forEach(m=>api.push({role:m.role,content:m.content}));
   let didS=false;if(S.sOn){const q=last.content.slice(0,80);if(q){const sr=await searchWeb(q);if(sr){api.push({role:'system',content:'[联网搜索结果：]\n'+sr});didS=true}}}
@@ -878,4 +878,3 @@ init();
 </script>
 </body>
 </html>
-
