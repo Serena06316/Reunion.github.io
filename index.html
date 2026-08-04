@@ -477,7 +477,7 @@ textarea.sg-i{min-height:64px;resize:vertical;line-height:1.6}
         <div class="sg"><label class="sg-l">主 API 密钥</label><input class="sg-i" id="i_key" type="password" placeholder="sk-..."></div>
         <div class="sg"><label class="sg-l">当前模型</label>
           <div style="display:flex;gap:5px">
-            <select class="sg-i" id="i_model" style="flex:1"></select>
+            <input class="sg-i" id="i_model" placeholder="直接输入或拉取模型" style="flex:1">
             <button class="av-btn" style="white-space:nowrap;padding:8px 12px" onclick="fetchModels()"><i class="fas fa-sync"></i> 拉取</button>
           </div>
           <div class="sg-h">点击拉取从API获取可用模型列表</div>
@@ -845,9 +845,12 @@ async function fetchModels(){
   toast('拉取模型中…');
   try{const r=await fetch(base+'/models',{headers:{'Authorization':'Bearer '+key}});if(!r.ok)throw new Error(r.status);
     const d=await r.json();const list=(d.data||[]).map(m=>m.id).sort();
-    const sel=Q('#i_model');sel.innerHTML=list.map(m=>`<option value="${m}">${m}</option>`).join('');
-    S.cfg.models=list;toast('已拉取 '+list.length+' 个模型')}
-  catch(e){toast('拉取失败：'+e.message)}}
+    const inp=Q('#i_model');inp.value=list[0]||'';S.cfg.models=list;
+    inp.setAttribute('list','model-list');
+    let dl=document.getElementById('model-list');if(!dl){dl=document.createElement('datalist');dl.id='model-list';document.body.appendChild(dl)}
+    dl.innerHTML=list.map(m=>`<option value="${m}">`).join('');
+    toast('已拉取 '+list.length+' 个模型')}
+  catch(e){toast('拉取失败(可能被API限制)，请直接手动输入模型名')}}
 
 function savePreset(){const name=Q('#presetName').value.trim();if(!name){toast('请输入预设名称');return}
   S.presets.push({id:Date.now(),name,base:Q('#i_base').value.trim(),key:Q('#i_key').value.trim(),model:Q('#i_model').value,tok:parseInt(Q('#i_tok').value)||4096,temp:parseFloat(Q('#i_temp').value)||.7});
@@ -883,7 +886,10 @@ function stab(el){QQ('.mt').forEach(t=>t.classList.remove('on'));el.classList.ad
 function openSettings(){
   Q('#sBg').classList.add('open');QQ('.mt')[0].click();
   Q('#i_base').value=S.cfg.base||'';Q('#i_key').value=S.cfg.key||'';
-  const sel=Q('#i_model');sel.innerHTML=(S.cfg.models||[]).map(m=>`<option value="${m}">${m}</option>`).join('');sel.value=S.cfg.cur||'';
+  const sel=Q('#i_model');sel.value=S.cfg.cur||'';
+  sel.setAttribute('list','model-list');
+  let dl=document.getElementById('model-list');if(!dl){dl=document.createElement('datalist');dl.id='model-list';document.body.appendChild(dl)}
+  dl.innerHTML=(S.cfg.models||[]).map(m=>`<option value="${m}">`).join('');
   Q('#i_tok').value=S.cfg.tok||4096;Q('#i_temp').value=S.cfg.temp||.7;
   Q('#i_sBase').value=S.cfg.searchBase||'';Q('#i_sKey').value=S.cfg.searchKey||'';
   Q('#i_vBase').value=S.cfg.visionBase||'';Q('#i_vKey').value=S.cfg.visionKey||'';Q('#i_vModel').value=S.cfg.visionModel||'';
@@ -1008,7 +1014,7 @@ async function doSend(isRe){
   sys+='\n\n[信箱工具] 用 <write_letter>内容</write_letter> 写信。';
   sys+='\n\n[美化工具] 用 <edit_style>CSS代码</edit_style> 覆盖CSS，或 <append_style>CSS代码</append_style> 追加CSS。';
   sys+='\n\n[统计工具] 用 <get_stats/> 获取陪伴密度完整数据。';
-  if(S.tOn)sys+='\n\n[思考模式] 请先用 <think>...</think> 深入思考，然后给出正式回复。';
+  if(S.tOn)sys+='\n\n[思考模式] 请先用  深入思考，然后给出正式回复。';
   api.push({role:'system',content:sys});
 
   c.msgs.forEach(m=>{
