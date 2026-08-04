@@ -1077,7 +1077,12 @@ async function doSend(isRe){
     sv();rMem();uMB();uLetB();rM();
   }catch(e){
     if(e.name!=='AbortError'){
-      aM.content='请求失败：'+e.message;
+      // 过滤掉后端返回的 HTML 网页代码，只保留纯文本提示，防止界面被撑坏
+      let errMsg = e.message || '未知错误';
+      if(errMsg.includes('504')) errMsg = 'API 504 网关超时';
+      else if(errMsg.includes('502')) errMsg = 'API 502 网关错误';
+      else errMsg = errMsg.slice(0, 100);
+      aM.content='请求失败：' + errMsg + '\n\n[请点击下方“删除”或“重新生成”按钮]';
     } else if(!aM.content){
       aM.content='请求超时或被中止，请删除本条重试。';
     }
@@ -1113,7 +1118,10 @@ function bMsg(m){
     if(m.statsUsed)body+='<div class="bdg-stats"><i class="fas fa-chart-line"></i> 已获取陪伴统计</div>';
     if(m.searched)body+='<div class="bdg-s"><i class="fas fa-globe"></i> 已联网搜索</div>';
     if(m.thinking)body+=`<div class="think"><div class="think-h on" onclick="this.classList.toggle('on');this.nextElementSibling.classList.toggle('on')"><i class="fas fa-caret-right ar"></i> 思考过程</div><div class="think-b on">${esc(m.thinking)}</div></div>`;
-    if(m.content){try{body+=marked.parse(m.content)}catch(e){body+=esc(m.content)}}
+    if(isFailed){
+      // 如果是失败消息，强制纯文本显示，不渲染 Markdown 网页
+      body+=`<div style="color:var(--red);white-space:pre-wrap;word-break:break-word;">${esc(m.content)}</div>`;
+    } else if(m.content){try{body+=marked.parse(m.content)}catch(e){body+=esc(m.content)}}
     else if(busy&&m===cc().msgs[cc().msgs.length-1])body+=`<div class="gen"><div class="gd"><span></span><span></span><span></span></div>正在生成…</div>`;
     if(m.memSaved)body+='<div class="bdg-m"><i class="fas fa-check-circle"></i> 记忆已更新</div>';
     if(m.letSaved)body+='<div class="bdg-let"><i class="fas fa-envelope"></i> 已写入信箱</div>';
