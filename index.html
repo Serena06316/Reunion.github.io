@@ -126,7 +126,7 @@ input,textarea,select,button{font-family:inherit}
 .m-file img{width:28px;height:28px;object-fit:cover;border-radius:4px}
 .m-acts{display:flex;gap:3px;margin-top:3px;opacity:0;transition:opacity .12s}
 .message:hover .m-acts,.message:active .m-acts{opacity:1}
-.message.failed .m-acts, .m-acts.force-show{opacity:1 !important}
+.message.failed .m-acts, .m-acts.force-show{opacity:1 !important; display:flex !important; pointer-events:auto !important;}
 .message.failed .m-text{border:1px dashed var(--red);border-radius:8px;padding:8px}
 .ma{padding:3px 8px;font-size:10px;border:none;border-radius:5px;background:var(--acs);color:var(--t3);cursor:pointer;display:inline-flex;align-items:center;gap:3px;transition:all .12s}
 .ma:hover{background:var(--sf1);color:var(--t1)}
@@ -1037,7 +1037,6 @@ async function doSend(isRe){
 
   const aM={id:'m_'+uid(),role:'assistant',content:'',thinking:'',model:S.cfg.cur,searched:didS,memSaved:false,letSaved:false,styleSaved:false,statsUsed:false,visionUsed:usedVision,ts:Date.now()};c.msgs.push(aM);sv();rM();
   busy=true;ctrl=new AbortController();uSnd();
-  // 【新增】60秒超时保护：如果60秒还没响应，自动中断请求，防止状态卡死
   const timeoutId = setTimeout(() => { if(busy && ctrl) ctrl.abort(); }, 60000);
   try{
     const runStream=async()=>{
@@ -1077,14 +1076,18 @@ async function doSend(isRe){
     sv();rMem();uMB();uLetB();rM();
   }catch(e){
     if(e.name!=='AbortError'){
-      aM.content='请求失败：'+e.message;
+      let errMsg = e.message || '未知错误';
+      if(errMsg.includes('504')) errMsg = 'API 504 网关超时';
+      else if(errMsg.includes('502')) errMsg = 'API 502 网关错误';
+      else errMsg = errMsg.slice(0, 100);
+      aM.content='请求失败：' + errMsg + '\n\n[请点击下方“删除”或“重新生成”按钮]';
     } else if(!aM.content){
       aM.content='请求超时或被中止，请删除本条重试。';
     }
     rM();
   }
   finally{
-    clearTimeout(timeoutId); // 清理定时器
+    clearTimeout(timeoutId);
     busy=false;ctrl=null;uSnd();sv();
   }}
 
@@ -1102,6 +1105,7 @@ function getDisplayText(m){if(m.rawText!==undefined)return m.rawText;let d=m.con
 
 function bMsg(m){
   const isU=m.role==='user';
+  const isFailed = !isU && m.content && (m.content.startsWith('请求失败') || m.content.startsWith('请求超时'));
   const av=isU?(S.cfg.uA?`<img src="${S.cfg.uA}">`:'<i class="fas fa-user"></i>'):(S.cfg.aA?`<img src="${S.cfg.aA}">`:'<i class="fas fa-robot"></i>');
   const name=isU?(S.cfg.uN||'用户'):(S.cfg.aN||'助手');
   const model=(!isU&&m.model)?`<span class="m-model">${esc(m.model)}</span>`:'';
@@ -1113,13 +1117,13 @@ function bMsg(m){
     if(m.statsUsed)body+='<div class="bdg-stats"><i class="fas fa-chart-line"></i> 已获取陪伴统计</div>';
     if(m.searched)body+='<div class="bdg-s"><i class="fas fa-globe"></i> 已联网搜索</div>';
     if(m.thinking)body+=`<div class="think"><div class="think-h on" onclick="this.classList.toggle('on');this.nextElementSibling.classList.toggle('on')"><i class="fas fa-caret-right ar"></i> 思考过程</div><div class="think-b on">${esc(m.thinking)}</div></div>`;
-    if(m.content){try{body+=marked.parse(m.content)}catch(e){body+=esc(m.content)}}
+    if(isFailed){
+      body+=`<div style="color:var(--red);white-space:pre-wrap;word-break:break-word;">${esc(m.content)}</div>`;
+    } else if(m.content){try{body+=marked.parse(m.content)}catch(e){body+=esc(m.content)}}
     else if(busy&&m===cc().msgs[cc().msgs.length-1])body+=`<div class="gen"><div class="gd"><span></span><span></span><span></span></div>正在生成…</div>`;
     if(m.memSaved)body+='<div class="bdg-m"><i class="fas fa-check-circle"></i> 记忆已更新</div>';
     if(m.letSaved)body+='<div class="bdg-let"><i class="fas fa-envelope"></i> 已写入信箱</div>';
     if(m.styleSaved)body+='<div class="bdg-style"><i class="fas fa-palette"></i> 美化已更新</div>'}
-  // 判断是否是失败的消息（根据你刚才报错的前缀判断）
-  const isFailed = !isU && m.content && (m.content.startsWith('请求失败') || m.content.startsWith('请求超时'));
   let acts='';
   if(isU)acts=`<div class="m-acts"><button class="ma" onclick="startEdit('${m.id}')"><i class="fas fa-pen"></i> 编辑</button><button class="ma rd" onclick="delMsg('${m.id}')"><i class="fas fa-trash"></i> 删除</button></div>`;
   else acts=`<div class="m-acts ${isFailed?'force-show':''}"><button class="ma" onclick="regen('${m.id}')"><i class="fas fa-rotate"></i> 重新生成</button><button class="ma" onclick="startEdit('${m.id}')"><i class="fas fa-pen"></i> 编辑</button><button class="ma rd" onclick="delMsg('${m.id}')"><i class="fas fa-trash"></i> 删除</button></div>`;
